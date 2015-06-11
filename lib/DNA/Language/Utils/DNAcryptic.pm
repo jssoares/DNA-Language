@@ -1,41 +1,20 @@
-package DNAcryptic;
+package DNA::Language::Utils::DNAcryptic;
 
-use strict;
-use warnings;
-use Data::Dumper;
+use Moose;
 use Carp;
-#use diagnostics;
 
 our $VERSION = "1.00";
-our ($AUTOLOAD, %ok_field);
 
-# Get/set methods to be handled by AUTOLOAD
-for my $attr (
-	      qw(
-		  k
-		  mode
-		  sequence
-		  kgram_analysis
-		  digit_to_dna
-	       )
-	     ) { $ok_field{$attr}++; }
+has k => ( is => 'rw', isa => 'Int', lazy => 1,  default => q(3) );
+has mode => ( is => 'rw', isa => 'Str', lazy => 1, default => q(no_mode) );
+has sequence => ( is => 'rw', isa => 'Str', lazy=> 1, default => q(no_sequence) );
+has kgrams => ( is => 'rw', isa => 'ArrayRef', lazy => 1, builder => '_build_kgrams');
+has digit_to_dna => ( is => 'rw', isa => 'HashRef', lazy => 1, default => sub { [] });
 
-sub new {
 
-  my($class, %args) = @_;
-  my $self = bless({}, $class);
-  my $k = exists $args{k} ? $args{k} : 'no_k';
-  my $mode = exists $args{mode} ? $args{mode} : 'no_mode';
-  my $sequence = exists $args{sequence} ? $args{sequence} : 'no_sequence';
-  $self->k($k);
-  $self->mode($mode);
-  $self->sequence($sequence);
-  return $self;
-}
+sub _build_kgrams {
 
-sub getKgrams {
-
-  my $self = shift;
+  my ($self) = @_;
   my $k = $self->k;
 
   my %base_hash;
@@ -106,15 +85,13 @@ sub getKgrams {
     warn if $@;
   }
 
-  $self->kgram_analysis(\@kgram);
-
-  return $self;
+  return(\@kgram);
 }
 
 
-sub convertDigitToDNA {
+sub _build_digit_to_dna {
 
-  my $self = shift;
+  my ($self) = @_;
   my $k = $self->k;
 
   my (%digit_to_dna, @bases, $base);
@@ -129,29 +106,28 @@ sub convertDigitToDNA {
   }
 
   my @split_kgram;
-  if (defined $self->kgram_analysis) {
-    for (my $i =0; $i < scalar @{ $self->kgram_analysis }; $i++) {
-      if ($self->kgram_analysis->[$i] && $self->kgram_analysis->[$i] > 0) {
-	my $kgram = base($i,10,$base);
+  if (defined $self->kgrams) {
+    for (my $i = 0; $i < scalar @{ $self->kgrams }; $i++) {
+      if ($self->kgrams->[$i] && $self->kgrams->[$i] > 0) {
+	my $kgram = _base($i,10,$base);
 	@split_kgram = split(//,$kgram);
-	simpler_way($k,\@split_kgram);
-	#stupid_way($k,\@split_kgram);
+	_simpler_way($k,\@split_kgram);
+	#_stupid_way($k,\@split_kgram);
 	my $dna_kgram;
 
 	for (my $b = 0; $b < scalar @split_kgram; $b++) {
 	  $dna_kgram .= $bases[$split_kgram[$b]];
 	}
-	if ($self->kgram_analysis->[$i]) {
-	  $digit_to_dna{$dna_kgram} = $self->kgram_analysis->[$i];
+	if ($self->kgrams->[$i]) {
+	  $digit_to_dna{$dna_kgram} = $self->kgrams->[$i];
 	}
       }
     }
-    $self->digit_to_dna(\%digit_to_dna);
+    return(\%digit_to_dna);
   }
-  return $self;
 }
 
-sub simpler_way {
+sub _simpler_way {
 
   my($k,$split_kgram) = @_;
   for (scalar @$split_kgram .. $k - 1) {
@@ -160,7 +136,7 @@ sub simpler_way {
   return;
 }
 
-sub base4ToDec {
+sub _base4ToDec {
   #Implementation of: htun = (h * n2) + (t * n1) + (u * n0)
   my ($base4,$exps) = @_;
   my $dec_index;
@@ -170,7 +146,7 @@ sub base4ToDec {
   return($dec_index);
 }
 
-sub base5ToDec {
+sub _base5ToDec {
   #Implementation of: htun = (h * n3) + (h * n2) + (t * n1) + (u * n0)
   my ($base5,$exps) = @_;
   my $dec_index;
@@ -180,7 +156,7 @@ sub base5ToDec {
   return($dec_index);
 }
 
-sub base {
+sub _base {
   my ($number, $inbase, $outbase) = @_;
   my ($realnum, $output, $i, $digit);
   # Convert the number (which might have letters) to lowercase.
@@ -197,7 +173,7 @@ sub base {
   # Convert the number from base 10 to $outbase.
   # logbase() is defined below.
   eval {
-    for ($i = int(logbase($realnum, $outbase)); $i >= 0; $i--) {
+    for ($i = int(_logbase($realnum, $outbase)); $i >= 0; $i--) {
       $digit = int($realnum / ($outbase ** $i));
       $realnum -= $digit * ($outbase ** $i);
       $digit = ord($digit + 49) if ord($digit) > 57;
@@ -211,28 +187,14 @@ sub base {
   return $output;
 }
 
-sub logbase {
+sub _logbase {
   my ($number, $base) = @_;
   return if $number <= 0 or $base <= 0 or $base == 1;
   return log ($number) / log($base);
 }
 
-sub AUTOLOAD {
-
-  my $self = shift;
-  my $attr = $AUTOLOAD;
-  $attr =~ s/.*:://;
-
-  return unless $attr =~ /[^A-Z]/;  #skip DESTROY and all-cap methods
-
-  croak "invalid attribute method: ->$attr()"
-    unless $ok_field{$attr};
-  $self->{$attr} = shift if @_;
-
-  return $self->{$attr};
-}
-
-sub stupid_way {
+#Only here for legacy reasons and for me to try to understand what I was doing wiht this.
+sub _stupid_way {
 
   my ($k,$split_kgram) = @_;
 
@@ -693,4 +655,6 @@ sub stupid_way {
   return;
 }
 
+no Moose;
+__PACKAGE__->meta->make_immutable;
 1;
