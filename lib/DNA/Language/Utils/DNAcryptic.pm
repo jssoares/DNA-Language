@@ -3,13 +3,11 @@ package DNA::Language::Utils::DNAcryptic;
 use Moose;
 use Carp;
 
-our $VERSION = "1.00";
-
 has k => ( is => 'rw', isa => 'Int', lazy => 1,  default => q(3) );
 has mode => ( is => 'rw', isa => 'Str', lazy => 1, default => q(no_mode) );
-has sequence => ( is => 'rw', isa => 'Str', lazy=> 1, default => q(no_sequence) );
+has sequence => ( is => 'rw', isa => 'ArrayRef', lazy=> 1, default => q(no_sequence) );
 has kgrams => ( is => 'rw', isa => 'ArrayRef', lazy => 1, builder => '_build_kgrams');
-has digit_to_dna => ( is => 'rw', isa => 'HashRef', lazy => 1, default => sub { [] });
+has digit_to_dna => ( is => 'rw', isa => 'HashRef', lazy => 1, builder => '_build_digit_to_dna');
 
 
 sub _build_kgrams {
@@ -17,6 +15,8 @@ sub _build_kgrams {
   my ($self) = @_;
   my $k = $self->k;
 
+  print "HELLO\n";
+  
   my %base_hash;
   if ($self->mode eq 'test' || $self->mode eq 'real') {
     $base_hash{a} = 0;
@@ -74,7 +74,7 @@ sub _build_kgrams {
 	}
 
 	if ($dec_index < 999999999) {
-	$i_dec = base5ToDec(\@base5,\@exps);
+	$i_dec = _base5ToDec(\@base5,\@exps);
 	#print "\t$dec_index\n";
 	#increment the count on the index $dec_index of the @kgram
 	$kgram[$i_dec]++;
