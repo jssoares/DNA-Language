@@ -1,0 +1,18 @@
+#!/usr/bin/env perl
+
+package DNA::Language::Main::LanguageAnalysis;
+
+# ABSTRACT: 
+# PODNAME: 
+
+=head1 SYNOPSIS
+
+
+
+=cut
+
+BEGIN { unshift( @INC, '../lib' ) }
+BEGIN { unshift( @INC, './lib' ) }
+use DNA::Language::CommandLine::LanguageAnalysis;
+
+DNA::Language::CommandLine::LanguageAnalysis->new(args => \@ARGV, script_name => $0)->run;
